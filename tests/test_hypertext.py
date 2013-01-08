@@ -1,3 +1,4 @@
+from __future__ import with_statement
 import unittest
 from srcgen.hypertext import html, head, title, link, body, h1, p, COMMENT, TEXT, ATTR, UNESCAPED, Unescaped
 

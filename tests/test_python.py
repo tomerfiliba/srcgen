@@ -1,3 +1,4 @@
+from __future__ import with_statement
 import unittest
 from srcgen.python import PythonModule, STMT, SEP, DOC, IF, DEF, RETURN
 
