@@ -75,7 +75,10 @@ class Exiter(object):
         self.func = func
     def __get__(self, inst, cls):
         if inst is None:
-            return _per_thread.stack[-1].__exit__
+            if _per_thread.stack:
+                return _per_thread.stack[-1].__exit__
+            else:
+                return lambda *a: None
         return self.func.__get__(inst, cls)
 # }}
 
@@ -109,7 +112,7 @@ class Element(six.with_metaclass(ElementMetaclass)):
     def __exit__(self, t, v, tb):
         _per_thread.stack.pop(-1)
     
-    # python < 2.6 hacks {{
+    # python <= 2.6.x hacks {{
     if sys.version_info < (2, 7):
         __enter__ = Enterer(__enter__)
         __exit__ = Exiter(__exit__)
@@ -270,6 +273,4 @@ class h6(Element): INLINE = True
 
 __all__ = ["TEXT", "COMMENT", "Unescaped", "UNESCAPED", "ATTR", "EMBED", "THIS", "PARENT"]
 __all__.extend(cls.__name__ for cls in Element.__subclasses__())
-
-
 

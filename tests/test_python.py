@@ -1,6 +1,6 @@
 from __future__ import with_statement
 import unittest
-from srcgen.python import PythonModule, STMT, SEP, DOC, IF, DEF, RETURN
+from srcgen.python import PythonModule, STMT, SEP, COMMENT, IF, DEF, RETURN
 
 
 class TestPython(unittest.TestCase):
@@ -9,12 +9,12 @@ class TestPython(unittest.TestCase):
             STMT("import sys")
             STMT("import os")
             SEP()
-            DOC("hi there", box = True)
+            COMMENT("hi there", box = True)
             STMT("x = 18")
             with IF("x > 5"):
                 STMT("print '''hello\nworld'''")
                 with IF("z == 18"):
-                    DOC("foo", "bar")
+                    COMMENT("foo", "bar")
                     STMT("print 'lala'")
                 with IF("z == 19"):
                     STMT("print 'gaga'")
