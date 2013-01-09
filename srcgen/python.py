@@ -1,214 +1,268 @@
 from __future__ import with_statement
-from threading import local
+from contextlib import contextmanager
+import pickle
 
-
-_per_thread = local()
 
 class PythonModule(object):
-    __slos__ = ["name", "children"]
-    def __init__(self, name):
+    def __init__(self, name, line_width = 80):
         self.name = name
-        self.children = []
-    def __enter__(self):
-        _per_thread.stack = [self]
-        return self
-    def __exit__(self, t, v, tb):
-        del _per_thread.stack
+        self.line_width = line_width
+        self._curr = []
     def __repr__(self):
-        return "PythonModule(%r, %d children)" % (self.name, len(self.children))
+        return "PythonModule(%r)" % (self.name,)
     def __str__(self):
         return self.render()
     
+    @classmethod
+    def _render(cls, curr, level):
+        indent = "    " * level
+        for elem in curr:
+            if isinstance(elem, list):
+                for line in cls._render(elem, level + 1):
+                    yield line
+            else:
+                yield indent + str(elem)
     def render(self):
-        """Returns a textual representation of the module (string)"""
-        return "\n".join("\n".join(child._render(0)) for child in self.children)
-    def dump(self, file):
+        return "\n".join(self._render(self._curr, 0))
+        
+    def dump(self, filename_or_fileobj):
         """Renders the module and dumps it to the given file. ``file`` can be either a file name or 
         a file object"""
         data = self.render()
-        if hasattr(file, "write"):
-            file.write(data)
+        if hasattr(filename_or_fileobj, "write"):
+            filename_or_fileobj.write(data)
         else:
-            with open(file, "w") as f:
+            with open(filename_or_fileobj, "w") as f:
                 f.write(data)
 
-class Node(object):
-    __slos__ = []
-    def __init__(self):
-        _per_thread.stack[-1].children.append(self)
-    def _render(self, level):
-        raise NotImplementedError()
-
-#=======================================================================================================================
-# Suites
-#=======================================================================================================================
-class Suite(Node):
-    __slos__ = ["headline", "children"]
-    ADD_SEP = False
-    def __init__(self, headline):
-        Node.__init__(self)
-        self.headline = headline
-        self.children = []
-    def __enter__(self,):
-        _per_thread.stack.append(self)
-        return self
-    def __exit__(self, t, v, tb):
-        _per_thread.stack.pop(-1)
-    def __repr__(self):
-        return "%s(%r, %d children)" % (self.__class__.__name__, self.headline, len(self.children))
-    def _render(self, level):
-        yield "    " * level + self.headline + ":"
-        if not self.children:
-            yield "    " * (level + 1) + "pass"
+    #
+    # Separator and Comment
+    #
+    def sep(self, count = 1):
+        self._curr.extend("" for _ in range(count))
+    def comment(self, *lines, **kwargs):
+        box = kwargs.pop("box", False)
+        sep = kwargs.pop("sep", False)
+        if sep and box:
+            self._curr.append("")
+            self._curr.append("#" * self.line_width)
+        elif sep:
+            self._curr.append("#")
+        elif box:
+            self._curr.append("#" * self.line_width)
+        self._curr.extend("# %s" % (l,) for l in "\n".join(lines).splitlines())
+        if sep and box:
+            self._curr.append("#" * self.line_width)
+            self._curr.append("")
+        elif sep:
+            self._curr.append("#")
+        elif box:
+            self._curr.append("#" * self.line_width)    
+    
+    #
+    # Statements
+    #
+    def stmt(self, text, *args):
+        self._curr.append(text.format(*args) if args else text)
+    def break_(self):
+        self.stmt("break")
+    def continue_(self):
+        self.stmt("continue")
+    def return_(self, expr, *args):
+        self.stmt("return %s" % (expr,), *args)
+    def yield_(self, expr, *args):
+        self.stmt("yield %s" % (expr,), *args)
+    def raise_(self, expr, *args):
+        self.stmt("raise %s" % (expr,), *args)
+    def import_(self, modname):
+        self.stmt("import %s" % (modname,))
+    def from_(self, modname, *attrs):
+        self.stmt("from %s import %s" % (modname, ", ".join(attrs)))
+    
+    #
+    # Suites
+    #
+    @contextmanager
+    def suite(self, headline, *args):
+        self.stmt(headline, *args)
+        prev = self._curr
+        self._curr = []
+        prev.append(self._curr)
+        yield
+        self._curr = prev
+    @contextmanager
+    def if_(self, cond, *args):
+        with self.suite("if %s:" % (cond,), *args): yield
+    @contextmanager
+    def elif_(self, cond, *args):
+        with self.suite("elif %s:" % (cond,), *args): yield
+    @contextmanager
+    def else_(self):
+        with self.suite("else:"): yield
+    @contextmanager
+    def for_(self, var, expr):
+        with self.suite("for %s in %s:" % (var, expr)): yield
+    @contextmanager
+    def while_(self, cond, *args):
+        with self.suite("while %s:" % (cond,), *args): yield
+    @contextmanager
+    def try_(self):
+        with self.suite("try:"): yield
+    @contextmanager
+    def except_(self, exceptions, var = None):
+        if var:
+            with self.suite("except (%s) as %s:" % (", ".join(exceptions), var)): yield
         else:
-            for child in self.children:
-                for line in child._render(level + 1):
-                    yield line
-        if self.ADD_SEP:
-            yield ""
+            with self.suite("except (%s):" % (", ".join(exceptions),)): yield
+    @contextmanager
+    def finally_(self):
+        with self.suite("finally:"): yield
+    @contextmanager
+    def def_(self, name, *args):
+        with self.suite("def %s(%s):" % (name, ", ".join(str(a) for a in args))): yield
+        self.sep()
+    @contextmanager
+    def class_(self, name, bases = ("object",)):
+        with self.suite("class %s(%s):" % (name, ", ".join(bases,))): yield
+        self.sep()
 
-class IF(Suite):
-    __slots__ = []
-    def __init__(self, cond):
-        Suite.__init__(self, "if %s" % (cond,))
+def R(*args, **kwargs):
+    """repr"""
+    if args and kwargs:
+        raise TypeError("Either positional or keyword arguments may be given")
+    elif args:
+        if len(args) != 1:
+            raise TypeError("Exactly one positional argument may be given")
+        return repr(args[0])
+    elif kwargs:
+        if len(kwargs) != 1:
+            raise TypeError("Exactly one keyword argument may be given")
+        return "%s = %r" % kwargs.popitem()
+    else:
+        raise TypeError("Either positional or keyword arguments must be given")
 
-class ELIF(Suite):
-    __slots__ = []
-    def __init__(self, cond):
-        Suite.__init__(self, "elif %s" % (cond,))
+class P(object):
+    """
+    Pickled object
+    """
+    __slots__ = ["data"]
+    def __init__(self, obj):
+        self.data = "pickle.loads(%r)" % (pickle.dumps(obj),)
+    def __str__(self):
+        return self.data
+    __repr__ = __str__
 
-class ELSE(Suite):
-    __slots__ = []
-    def __init__(self):
-        Suite.__init__(self, "else")
-
-class TRY(Suite):
-    __slots__ = []
-    def __init__(self):
-        Suite.__init__(self, "try")
-
-class EXCEPT(Suite):
-    __slots__ = []
-    def __init__(self, exceptions, varname = None):
-        if varname:
-            Suite.__init__(self, "except (%s)" % (", ".join(exceptions),))
-        else:
-            Suite.__init__(self, "except (%s) as %s" % (", ".join(exceptions), varname))
-
-class FINALLY(Suite):
-    __slots__ = []
-    def __init__(self):
-        Suite.__init__(self, "finally")
-
-class WHILE(Suite):
-    __slots__ = []
-    def __init__(self, cond):
-        Suite.__init__(self, "while %s" % (cond,))
-
-class FOR(Suite):
-    __slots__ = []
-    def __init__(self, var, iterable):
-        Suite.__init__(self, "for %s in %s" % (var, iterable))
-
-class WITH(Suite):
-    __slots__ = []
-    def __init__(self, *exprs):
-        Suite.__init__(self, "with %s" % (", ".join(exprs),))
-
-class CLASS(Suite):
-    __slots__ = []
-    ADD_SEP = True
-    def __init__(self, name, bases = (object,)):
-        Suite.__init__(self, "class %s(%s)" % (name, ", ".join(bases)))
-
-class DEF(Suite):
-    __slots__ = []
-    ADD_SEP = True
-    def __init__(self, name, args = ()):
-        Suite.__init__(self, "def %s(%s)" % (name, ", ".join(args)))
-
-#=======================================================================================================================
-# Statements
-#=======================================================================================================================
-class SEP(Node):
-    __slots__ = ["count"]
-    def __init__(self, count = 1):
-        Node.__init__(self)
-        self.count = count
+class E(object):
+    """
+    Expression object
+    """
+    __slots__ = ["_value"]
+    def __init__(self, value):
+        self._value = str(value)
+    def __str__(self):
+        return self._value
     def __repr__(self):
-        return "SEP(%r)" % (self.count,)
-    def _render(self, level):
-        for _ in range(self.count):
-            yield ""
+        return self._value
+    
+    def __add__(self, other):
+        return E("(%r + %r)" % (self, other))
+    def __sub__(self, other):
+        return E("(%r - %r)" % (self, other))
+    def __mul__(self, other):
+        return E("(%r * %r)" % (self, other))
+    def __truediv__(self, other):
+        return E("(%r / %r)" % (self, other))
+    __div__ = __truediv__
+    def __floordiv__(self, other):
+        return E("(%r // %r)" % (self, other))
+    def __mod__(self, other):
+        return E("(%r % %r)" % (self, other))
+    def __pow__(self, other):
+        return E("(%r % %r)" % (self, other))
+    def __or__(self, other):
+        return E("(%r or %r)" % (self, other))
+    def __and__(self, other):
+        return E("(%r and %r)" % (self, other))
+    def __xor__(self, other):
+        return E("(%r ^ %r)" % (self, other))
+    def __lshift__(self, other):
+        return E("(%r << %r)" % (self, other))
+    def __rshift__(self, other):
+        return E("(%r >> %r)" % (self, other))
 
-class COMMENT(Node):
-    __slots__ = ["lines", "box", "sep"]
-    LINE_WIDTH = 80
-    def __init__(self, *lines, **kwargs):
-        Node.__init__(self)
-        self.box = kwargs.pop("box", False)
-        self.sep = kwargs.pop("sep", False)
+    def __radd__(self, other):
+        return E("(%r + %r)" % (other, self))
+    def __rsub__(self, other):
+        return E("(%r - %r)" % (other, self))
+    def __rmul__(self, other):
+        return E("(%r * %r)" % (other, self))
+    def __rtruediv__(self, other):
+        return E("(%r / %r)" % (other, self))
+    __rdiv__ = __rtruediv__
+    def __rfloordiv__(self, other):
+        return E("(%r // %r)" % (other, self))
+    def __rmod__(self, other):
+        return E("(%r % %r)" % (other, self))
+    def __rpow__(self, other):
+        return E("(%r % %r)" % (other, self))
+    def __ror__(self, other):
+        return E("(%r or %r)" % (other, self))
+    def __rand__(self, other):
+        return E("(%r and %r)" % (other, self))
+    def __rxor__(self, other):
+        return E("(%r ^ %r)" % (other, self))
+    def __rlshift__(self, other):
+        return E("(%r << %r)" % (other, self))
+    def __rrshift__(self, other):
+        return E("(%r >> %r)" % (other, self))
+    
+    def __gt__(self, other):
+        return E("(%r > %r)" % (self, other))
+    def __ge__(self, other):
+        return E("(%r >= %r)" % (self, other))
+    def __lt__(self, other):
+        return E("(%r < %r)" % (self, other))
+    def __le__(self, other):
+        return E("(%r <= %r)" % (self, other))
+    def __eq__(self, other):
+        return E("(%r == %r)" % (self, other))
+    def __ne__(self, other):
+        return E("(%r != %r)" % (self, other))
+    
+    def __neg__(self):
+        return E("-%r" % (self,))
+    def __pos__(self):
+        return E("+%r" % (self,))
+    def __inv__(self):
+        return E("not %r" % (self,))
+    __invert__ = __inv__
+    
+    def __getitem__(self, key):
+        return E("%r[%r]" % (self, key))
+    def __getattr__(self, name):
+        return E("%r.%s" % (self, name))
+    def __call__(self, *args, **kwargs):
+        textargs = ""
+        if args:
+            textargs += ", ".join(repr(a) for a in args)
         if kwargs:
-            raise TypeError("Unknown keyword arguments %r" % (kwargs.keys(),))
-        self.lines = "\n".join(lines).splitlines()
-    def __repr__(self):
-        return "COMMENT(%s)" % (", ".join(repr(l) for l in self.lines))
-    def _render(self, level):
-        indent = "    " * level
-        if self.sep:
-            yield ""
-        if self.box:
-            yield indent + "#" * (self.LINE_WIDTH - level * 4)
-        for line in self.lines:
-            yield indent + "# " + line
-        if self.box:
-            yield indent + "#" * (self.LINE_WIDTH - level * 4)
-        if self.sep:
-            yield ""
+            if args:
+                textargs += ", "
+            textargs += ",".join("%s = %r" % (k, v) for k, v in kwargs.items())
+        return E("%r(%s)" % (self, textargs))
 
-class STMT(Node):
-    __slots__ = ["text"]
-    def __init__(self, fmt, *args):
-        Node.__init__(self)
-        self.text = fmt.format(*args) if args else fmt
-    def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__, self.text)
-    def _render(self, level):
-        yield "    " * level + self.text
 
-class IMPORT(STMT):
-    __slots__ = []
-    def __init__(self, *modnames):
-        STMT.__init__(self, "import %s" % (", ".join(modnames),))
-
-class FROM_IMPORT(STMT):
-    __slots__ = []
-    def __init__(self, modname, *attrs):
-        STMT.__init__(self, "from %s import %s" % (modname, ", ".join(attrs)))
-
-class RETURN(STMT):
-    __slots__ = []
-    def __init__(self, expr):
-        STMT.__init__(self, "return %s" % (expr,))
-
-class YIELD(STMT):
-    __slots__ = []
-    def __init__(self, expr):
-        STMT.__init__(self, "yield %s" % (expr,))
-
-class RAISE(STMT):
-    __slots__ = []
-    def __init__(self, expr):
-        STMT.__init__(self, "raise %s" % (expr,))
-
-class BREAK(STMT):
-    __slots__ = []
-    def __init__(self):
-        STMT.__init__(self, "break")
-
-class CONTINUE(STMT):
-    __slots__ = []
-    def __init__(self):
-        STMT.__init__(self, "continue")
-
+#if __name__ == "__main__":
+#    m = PythonModule("foo")
+#    m.import_("sys")
+#    m.import_("pickle")
+#    m.sep()
+#    with m.if_("x > {0}", P(7)):
+#        m.stmt("print {0}", R("oh no"))
+#        m.stmt(R(z = P(10)))
+#    m.stmt(E("foo")[3].bar(122, z = 8))
+#    m.stmt(R(w = E(17) - 6))
+#    
+#    print m
+#
 
