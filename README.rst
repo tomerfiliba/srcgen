@@ -3,7 +3,7 @@ srcgen
 
 Srcgen is a **semantic** code generation framework. Being semantic means that the code generator and the
 generated code bear similar structure; for instance, the body of an ``if`` statement is indented both in
-the generating and generated code. Here's a short example:
+the generating and generated code. Here's a short example::
 
     >>> from srcgen.python import PythonModule
     >>>
