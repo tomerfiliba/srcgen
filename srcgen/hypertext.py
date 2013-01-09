@@ -28,6 +28,8 @@ class Unescaped(str):
     
     for name in ['__format__', '__mul__', '__rmul__', 'capitalize', 'center', 'expandtabs', 'format', 'ljust', 
                 'lower', 'lstrip', 'rjust', 'rstrip', 'strip', 'swapcase', 'title', 'translate', 'upper', 'zfill']:
+        if name not in str.__dict__:
+            continue
         def mkmethod(name):
             def method(*args, **kwargs):
                 return Unescaped(getattr(str, name)(*args, **kwargs))
