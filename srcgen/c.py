@@ -76,10 +76,11 @@ class CModule(BaseModule):
         prev.append(self._curr)
         yield
         self._curr = prev
-        if not terminator:
+        if terminator is None:
             self._curr.append("}")
         else:
-            self._curr.append(terminator)
+            if terminator:
+                self._curr.append(terminator)
         
     @contextmanager
     def if_(self, cond, *args):
@@ -105,10 +106,10 @@ class CModule(BaseModule):
         with self.suite("switch (%s)" % (cond,),  *args): yield
     @contextmanager
     def case(self, val, *args):
-        with self.suite("case (%s):" % (val,),  *args): yield
+        with self.suite("case %s:" % (val,), terminator = "", *args): yield
     @contextmanager
     def default(self):
-        with self.suite("default:"): yield
+        with self.suite("default:", terminator = ""): yield
         
     @contextmanager
     def func(self, type, name, *args):

@@ -29,6 +29,8 @@ class PythonModule(BaseModule):
     #
     def stmt(self, text, *args):
         self._curr.append(text.format(*args) if args else text)
+    def doc(self, text):
+        self.stmt(repr(text))
     def break_(self):
         self.stmt("break")
     def continue_(self):
@@ -43,6 +45,8 @@ class PythonModule(BaseModule):
         self.stmt("import %s" % (modname,))
     def from_(self, modname, *attrs):
         self.stmt("from %s import %s" % (modname, ", ".join(attrs)))
+    def pass_(self):
+        self.stmt("pass")
     
     #
     # Suites
@@ -90,6 +94,56 @@ class PythonModule(BaseModule):
     def class_(self, name, bases = ("object",)):
         with self.suite("class %s(%s):" % (name, ", ".join(bases,))): yield
         self.sep()
+
+    @contextmanager
+    def cython(self):
+        mod = CythonModule()
+        mod._curr = self._curr
+        yield mod
+
+
+class CythonModule(PythonModule):
+    def __init__(self):
+        PythonModule.__init__(self)
+        self._in_cdef = False
+        
+    @property
+    def cdef(self):
+        self._in_cdef = True
+        return self
+    
+    def stmt(self, text, *args):
+        in_cdef = self._in_cdef
+        self._in_cdef = False
+        PythonModule.stmt(self, ("cdef " + text) if in_cdef else text, *args)
+    
+    def typedef(self, type, newname):
+        self.stmt("ctypedef %s %s" % (type, newname))
+    
+    @contextmanager
+    def suite(self, text, *args):
+        in_cdef = self._in_cdef
+        self._in_cdef = False
+        with PythonModule.suite(self, ("cdef " + text) if in_cdef else text, *args): yield
+    
+    @contextmanager
+    def extern(self, from_ = None):
+        with self.suite('extern from "%s":' % (from_,) if from_ else "extern"): yield
+        self.sep()
+    @contextmanager
+    def struct(self, name):
+        with self.suite("struct %s:" % (name,)): yield
+        self.sep()
+    @contextmanager
+    def union(self, name):
+        with self.suite("union %s:" % (name,)): yield
+        self.sep()
+    @contextmanager
+    def enum(self, name):
+        with self.suite("enum %s:" % (name,)): yield
+        self.sep()
+    
+
 
 class P(object):
     """
