@@ -142,7 +142,24 @@ class CythonModule(PythonModule):
     def enum(self, name):
         with self.suite("enum %s:" % (name,)): yield
         self.sep()
-    
+
+    @contextmanager
+    def property(self, name):
+        with self.suite("property %s:" % (name,)): yield
+        self.sep()
+    @contextmanager
+    def get(self):
+        with self.suite("def __get__(self):"): yield
+        self.sep()
+    @contextmanager
+    def set(self):
+        with self.suite("def __set__(self, value):"): yield
+        self.sep()
+    @contextmanager
+    def get_property(self, name):
+        with self.property(name):
+            with self.get():
+                yield
 
 
 class P(object):
