@@ -30,6 +30,23 @@ class BaseModule(object):
 
     def sep(self, count = 1):
         self._curr.extend("" for _ in range(count))
+    @classmethod
+    def _backwards_lines(cls, thelist):
+        for line in reversed(thelist):
+            if isinstance(line, list):
+                for line2 in cls._backwards_lines(line):
+                    yield line2
+            else:
+                yield line
+        
+    def ensure_sep(self, count = 1):
+        #empty = 0
+        #for line in self._backwards_lines(self._curr):
+        #    if not line.strip():
+        #        break
+        #    empty += 1
+        if self._curr and self._curr[-1]:
+            self.sep()
 
 
 def R(*args, **kwargs):

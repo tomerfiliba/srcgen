@@ -6,9 +6,10 @@ except ImportError:
     from distutils.core import setup
 
 HERE = os.path.dirname(__file__)
+exec(open(os.path.join(HERE, "srcgen", "version.py")).read())
 
 setup(name = "srcgen",
-    version = "0.1",
+    version = version_string, #@UndefinedVariable
     description = "srcgen: The semantic source code generation framework",
     author = "Tomer Filiba",
     author_email = "tomerfiliba@gmail.com",
@@ -16,8 +17,8 @@ setup(name = "srcgen",
     url = "",
     packages = ["srcgen"],
     provides = ["srcgen"],
-    requires = ["six"],
-    install_requires = ["six"],
+    #requires = ["six"],
+    #install_requires = ["six"],
     keywords = "source, code, generation, programmatic, semantic",
     long_description = open(os.path.join(HERE, "README.rst"), "r").read(),
     classifiers = [

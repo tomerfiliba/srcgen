@@ -88,12 +88,14 @@ class PythonModule(BaseModule):
         with self.suite("finally:"): yield
     @contextmanager
     def def_(self, name, *args):
+        self.ensure_sep()
         with self.suite("def %s(%s):" % (name, ", ".join(str(a) for a in args))): yield
-        self.sep()
+        self.ensure_sep()
     @contextmanager
     def class_(self, name, bases = ("object",)):
+        self.ensure_sep()
         with self.suite("class %s(%s):" % (name, ", ".join(bases,))): yield
-        self.sep()
+        self.ensure_sep()
 
     @contextmanager
     def cython(self):
@@ -112,6 +114,13 @@ class CythonModule(PythonModule):
         self._in_cdef = True
         return self
     
+    @contextmanager
+    def __call__(self, name, *args):
+        assert self._in_cdef
+        self.ensure_sep()
+        with self.suite("%s(%s):" % (name, ", ".join(str(a) for a in args))): yield
+        self.ensure_sep()
+    
     def stmt(self, text, *args):
         in_cdef = self._in_cdef
         self._in_cdef = False
@@ -129,32 +138,36 @@ class CythonModule(PythonModule):
     @contextmanager
     def extern(self, from_ = None):
         with self.suite('extern from "%s":' % (from_,) if from_ else "extern"): yield
-        self.sep()
+        self.ensure_sep()
     @contextmanager
     def struct(self, name):
+        self.ensure_sep()
         with self.suite("struct %s:" % (name,)): yield
-        self.sep()
+        self.ensure_sep()
     @contextmanager
     def union(self, name):
+        self.ensure_sep()
         with self.suite("union %s:" % (name,)): yield
-        self.sep()
+        self.ensure_sep()
     @contextmanager
     def enum(self, name):
+        self.ensure_sep()
         with self.suite("enum %s:" % (name,)): yield
-        self.sep()
+        self.ensure_sep()
 
     @contextmanager
     def property(self, name):
+        self.ensure_sep()
         with self.suite("property %s:" % (name,)): yield
-        self.sep()
+        self.ensure_sep()
     @contextmanager
     def get(self):
         with self.suite("def __get__(self):"): yield
-        self.sep()
+        self.ensure_sep()
     @contextmanager
     def set(self):
         with self.suite("def __set__(self, value):"): yield
-        self.sep()
+        self.ensure_sep()
     @contextmanager
     def get_property(self, name):
         with self.property(name):
