@@ -137,7 +137,7 @@ class CythonModule(PythonModule):
     
     @contextmanager
     def extern(self, from_ = None):
-        with self.suite('extern from "%s":' % (from_,) if from_ else "extern"): yield
+        with self.suite('extern from "%s":' % (str(from_).encode("string_escape"),) if from_ else "extern"): yield
         self.ensure_sep()
     @contextmanager
     def struct(self, name):

@@ -48,6 +48,7 @@ class CModule(BaseModule):
         self.stmt("%s:" % (name,))
     
     def include(self, filename):
+        filename = str(filename)
         if filename.startswith("<"):
             self.stmt("#include %s" % (filename,))
         else:
