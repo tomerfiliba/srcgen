@@ -10,19 +10,19 @@ class PythonModule(BaseModule):
         sep = kwargs.pop("sep", False)
         if sep and box:
             self._curr.append("")
-            self._curr.append("#" * self.line_width)
+            self._curr.append("#" * self._line_width)
         elif sep:
             self._curr.append("#")
         elif box:
-            self._curr.append("#" * self.line_width)
+            self._curr.append("#" * self._line_width)
         self._curr.extend("# %s" % (l,) for l in "\n".join(lines).splitlines())
         if sep and box:
-            self._curr.append("#" * self.line_width)
+            self._curr.append("#" * self._line_width)
             self._curr.append("")
         elif sep:
             self._curr.append("#")
         elif box:
-            self._curr.append("#" * self.line_width)    
+            self._curr.append("#" * self._line_width)    
     
     #
     # Statements

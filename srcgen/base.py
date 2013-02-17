@@ -1,14 +1,15 @@
 class BaseModule(object):
-    def __init__(self, name = None, line_width = 80):
-        self.name = name
-        self.line_width = line_width
+    def __init__(self, name = None, line_width = 80, indentation = "    "):
+        self._indentation = indentation
+        self._name = name
+        self._line_width = line_width
         self._curr = []
     def __str__(self):
         return self.render()
     
     @classmethod
-    def _render(cls, curr, level):
-        indent = "    " * level
+    def _render(cls, curr, level, indentation):
+        indent = indentation * level
         for elem in curr:
             if isinstance(elem, list):
                 for line in cls._render(elem, level + 1):
@@ -16,7 +17,10 @@ class BaseModule(object):
             else:
                 yield indent + str(elem)
     def render(self):
-        return "\n".join(self._render(self._curr, 0))
+        text = "\n".join(self._render(self._curr, 0, self._indentation))
+        if not text.endswith("\n"):
+            text += "\n"
+        return text
         
     def dump(self, filename_or_fileobj):
         """Renders the module and dumps it to the given file. ``file`` can be either a file name or 
