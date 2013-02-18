@@ -12,7 +12,7 @@ class BaseModule(object):
         indent = indentation * level
         for elem in curr:
             if isinstance(elem, list):
-                for line in cls._render(elem, level + 1):
+                for line in cls._render(elem, level + 1, indentation):
                     yield line
             else:
                 yield indent + str(elem)
