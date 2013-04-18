@@ -1,6 +1,7 @@
 from __future__ import with_statement
 import unittest
-from srcgen.hypertext import html, head, title, link, body, h1, p, COMMENT, TEXT, ATTR, UNESCAPED, Unescaped
+from srcgen.hypertext import (html, head, title, link, body, h1, p, div, COMMENT, TEXT, ATTR, 
+    UNESCAPED, Unescaped, recording, EMBED)
 
 
 class TestPython(unittest.TestCase):
@@ -74,6 +75,37 @@ and this too
     <!-- even i&apos;m commented! -- >
   -->
 </body>""")
+        
+    def test_recording(self):
+        with recording() as roots:
+            with div.main:
+                with h1:
+                    TEXT("foobar")
+                with p:
+                    TEXT("spam bacon")
+            with h1:
+                TEXT("eggs")
+            TEXT("begs")
+        
+        self.assertEqual(len(roots), 3)
+        
+        with html as doc:
+            with body:
+                for r in roots:
+                    EMBED(r)
+                TEXT("megs")
+        
+        print doc
+        '''self.assertEqual(str(doc), """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <body>
+    <div class="main">
+      <h1>foobar</h1>
+      <p>spam bacon</p>
+    </div>
+    <div>eggs</div>
+  </body>
+</html>""")'''
 
 
 if __name__ == "__main__":

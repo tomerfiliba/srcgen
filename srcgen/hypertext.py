@@ -1,6 +1,7 @@
 import threading
 import six
 import sys
+from contextlib import contextmanager
 
 
 class Unescaped(str):
@@ -270,6 +271,19 @@ class h3(Element): INLINE = True
 class h4(Element): INLINE = True
 class h5(Element): INLINE = True
 class h6(Element): INLINE = True
+
+
+@contextmanager
+def recording():
+    prev = getattr(_per_thread, "stack", None)
+    empty = Element()
+    _per_thread.stack = [empty]
+    yield empty._elems
+    if prev is None:
+        del _per_thread.stack
+    else:
+        _per_thread.stack = prev
+
 
 __all__ = ["TEXT", "COMMENT", "Unescaped", "UNESCAPED", "ATTR", "EMBED", "THIS", "PARENT"]
 __all__.extend(cls.__name__ for cls in Element.__subclasses__())
