@@ -1,3 +1,6 @@
+from __future__ import with_statement
+
+
 class BaseModule(object):
     def __init__(self, name = None, line_width = 80, indentation = "    "):
         self._indentation = indentation

@@ -154,7 +154,7 @@ class CythonModule(PythonModule):
     def extern(self, from_ = None, namespace = None):
         head = "extern"
         if from_:
-            head += ' from "%s"' % (str(from_).encode("string_escape"),)
+            head += ' from "%s"' % (str(from_).encode("unicode_escape"),)
         if namespace:
             head += ' namespace "%s"' % str(namespace).encode("string_escape")
         
