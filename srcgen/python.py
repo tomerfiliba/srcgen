@@ -154,12 +154,12 @@ class CythonModule(PythonModule):
     def extern(self, from_ = None, namespace = None):
         head = "extern"
         if from_:
-            head += ' from "%s"' % (str(from_).encode("unicode_escape"),)
+            head += ' from "%s"' % (repr(from_)[1:-1],)
         if namespace:
-            head += ' namespace "%s"' % str(namespace).encode("string_escape")
-        
+            head += ' namespace "%s"' % (repr(namespace)[1:-1],)
         with self.suite(head): yield
         self.sep()
+    
     @contextmanager
     def struct(self, name):
         with self.suite("struct %s:" % (name,)): yield
