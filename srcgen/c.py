@@ -8,20 +8,20 @@ class CModule(BaseModule):
         box = kwargs.pop("box", False)
         sep = kwargs.pop("sep", False)
         if sep and box:
-            self._curr.append("")
-            self._curr.append("/* " + "*" * (self._line_width-2))
+            self._append("")
+            self._append("/* " + "*" * (self._line_width-2))
         elif sep:
-            self._curr.append("/*")
+            self._append("/*")
         elif box:
-            self._curr.append("/* " + "*" * (self._line_width-2))
+            self._append("/* " + "*" * (self._line_width-2))
         self._curr.extend("/* %s" % (l.replace("*/", "* /"),) for l in "\n".join(lines).splitlines())
         if sep and box:
-            self._curr.append("*" * (self._line_width - 2) + " */")
-            self._curr.append("")
+            self._append("*" * (self._line_width - 2) + " */")
+            self._append("")
         elif sep:
-            self._curr.append("*/")
+            self._append("*/")
         elif box:
-            self._curr.append("*" * (self._line_width - 2) + " */")
+            self._append("*" * (self._line_width - 2) + " */")
         else:
             self._curr[-1] += " */"
     
@@ -33,9 +33,9 @@ class CModule(BaseModule):
         semicolon = kwargs.pop("semicolon", True)
         if kwargs:
             raise TypeError("Invalid keyword argument %r" % (kwargs.keys(),))
-        if semicolon and text.strip()[0] != "#" and text[-1] not in ";:{":
+        if semicolon and text.strip()[0] != "#" and text[-1] not in ";:,{":
             text += ";"
-        self._curr.append(text.format(*args) if args else text)
+        self._append(text.format(*args) if args else text)
     def break_(self):
         self.stmt("break")
     def continue_(self):
@@ -71,17 +71,17 @@ class CModule(BaseModule):
             raise TypeError("Invalid keyword argument %r" % (kwargs.keys(),))
         if headline[-1] not in "{:":
             headline += " {"
-        self._curr.append(headline.format(*args) if args else headline)
+        self._append(headline.format(*args) if args else headline)
         prev = self._curr
         self._curr = []
         prev.append(self._curr)
         yield
         self._curr = prev
         if terminator is None:
-            self._curr.append("}")
+            self._append("}")
         else:
             if terminator:
-                self._curr.append(terminator)
+                self._append(terminator)
 
     def if_(self, cond, *args):
         return self.suite("if (%s)" % (cond,), *args)
@@ -124,7 +124,7 @@ class CModule(BaseModule):
                 self._curr[-1] = self._curr[-1][:-1]
         self.sep()
     def enum_member(self, name, value = None):
-        self._curr.append("%s = %s," % (name, value) if value is not None else "%s," % (name,))
+        self._append("%s = %s," % (name, value) if value is not None else "%s," % (name,))
     
     @contextmanager
     def typedef(self, type, name):
@@ -147,7 +147,7 @@ class CModule(BaseModule):
     def _if_suite(self, headline, merge_endif):
         if merge_endif and self._curr and self._curr[-1].startswith("#endif"):
             self._curr.pop(-1)
-        self._curr.append(headline)
+        self._append(headline)
         prev = self._curr
         self._curr = []
         prev.append(self._curr)

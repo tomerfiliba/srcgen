@@ -4,6 +4,7 @@ class BaseModule(object):
         self._name = name
         self._line_width = line_width
         self._curr = []
+        self._sep_lines = 0
     def __str__(self):
         return self.render()
     
@@ -15,7 +16,8 @@ class BaseModule(object):
                 for line in cls._render(elem, level + 1, indentation):
                     yield line
             else:
-                yield indent + str(elem)
+                line = str(elem)
+                yield indent + line if line.strip() else ""
     def render(self):
         text = "\n".join(self._render(self._curr, 0, self._indentation))
         if not text.endswith("\n"):
@@ -33,25 +35,18 @@ class BaseModule(object):
                 f.write(data)
 
     def sep(self, count = 1):
+        if self._sep_lines >= count:
+            return
         self._curr.extend("" for _ in range(count))
-    @classmethod
-    def _backwards_lines(cls, thelist):
-        for line in reversed(thelist):
-            if isinstance(line, list):
-                for line2 in cls._backwards_lines(line):
-                    yield line2
-            else:
-                yield line
-        
-    def ensure_sep(self, count = 1):
-        #empty = 0
-        #for line in self._backwards_lines(self._curr):
-        #    if not line.strip():
-        #        break
-        #    empty += 1
-        if self._curr and self._curr[-1]:
-            self.sep()
-
+        self._sep_lines += count
+    
+    def _append(self, line):
+        if line.strip():
+            self._curr.append(line)
+            self._sep_lines = 0
+        else:
+            self._curr.append("")
+            self._sep_lines += 1
 
 def R(*args, **kwargs):
     """repr"""

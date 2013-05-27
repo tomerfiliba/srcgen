@@ -1,6 +1,7 @@
 from __future__ import with_statement
-from contextlib import contextmanager
 import pickle
+import six
+from contextlib import contextmanager
 from srcgen.base import BaseModule, BaseE, R
 
 
@@ -9,26 +10,26 @@ class PythonModule(BaseModule):
         box = kwargs.pop("box", False)
         sep = kwargs.pop("sep", False)
         if sep and box:
-            self._curr.append("")
-            self._curr.append("#" * self._line_width)
+            self._append("")
+            self._append("#" * self._line_width)
         elif sep:
-            self._curr.append("#")
+            self._append("#")
         elif box:
-            self._curr.append("#" * self._line_width)
+            self._append("#" * self._line_width)
         self._curr.extend("# %s" % (l,) for l in "\n".join(lines).splitlines())
         if sep and box:
-            self._curr.append("#" * self._line_width)
-            self._curr.append("")
+            self._append("#" * self._line_width)
+            self._append("")
         elif sep:
-            self._curr.append("#")
+            self._append("#")
         elif box:
-            self._curr.append("#" * self._line_width)    
+            self._append("#" * self._line_width)    
     
     #
     # Statements
     #
     def stmt(self, text, *args):
-        self._curr.append(text.format(*args) if args else text)
+        self._append(text.format(*args) if args else text)
     def doc(self, text):
         self.stmt(repr(text))
     def break_(self):
@@ -88,14 +89,15 @@ class PythonModule(BaseModule):
         with self.suite("finally:"): yield
     @contextmanager
     def def_(self, name, *args):
-        self.ensure_sep()
         with self.suite("def %s(%s):" % (name, ", ".join(str(a) for a in args))): yield
-        self.ensure_sep()
+        self.sep()
+
     @contextmanager
     def class_(self, name, bases = ("object",)):
-        self.ensure_sep()
+        if isinstance(bases, six.string_types):
+            bases = (bases,)
         with self.suite("class %s(%s):" % (name, ", ".join(bases,))): yield
-        self.ensure_sep()
+        self.sep()
 
     @contextmanager
     def cython(self):
@@ -103,10 +105,21 @@ class PythonModule(BaseModule):
         mod._curr = self._curr
         yield mod
 
+    def method(self, name, *args):
+        args = ("self",) + args
+        return self.def_(name, *args)
+    def classmethod(self, name, *args):
+        args = ("cls",) + args
+        self.stmt("@classmethod")
+        return self.def_(name, *args)
+    def staticmethod(self, name, *args):
+        self.stmt("@staticmethod")
+        return self.def_(name, *args)
+
 
 class CythonModule(PythonModule):
-    def __init__(self):
-        PythonModule.__init__(self)
+    def __init__(self, *args, **kwargs):
+        PythonModule.__init__(self, *args, **kwargs)
         self._in_cdef = False
         
     @property
@@ -117,9 +130,8 @@ class CythonModule(PythonModule):
     @contextmanager
     def __call__(self, name, *args):
         assert self._in_cdef
-        self.ensure_sep()
         with self.suite("%s(%s):" % (name, ", ".join(str(a) for a in args))): yield
-        self.ensure_sep()
+        self.sep()
     
     def stmt(self, text, *args):
         in_cdef = self._in_cdef
@@ -135,39 +147,44 @@ class CythonModule(PythonModule):
         self._in_cdef = False
         with PythonModule.suite(self, ("cdef " + text) if in_cdef else text, *args): yield
     
+    def cppclass(self, name, bases = ()):
+        return self.suite("cppclass %s:" % (name))
+    
     @contextmanager
-    def extern(self, from_ = None):
-        with self.suite('extern from "%s":' % (str(from_).encode("string_escape"),) if from_ else "extern"): yield
-        self.ensure_sep()
+    def extern(self, from_ = None, namespace = None):
+        head = "extern"
+        if from_:
+            head += ' from "%s"' % (str(from_).encode("string_escape"),)
+        if namespace:
+            head += ' namespace "%s"' % str(namespace).encode("string_escape")
+        
+        with self.suite(head): yield
+        self.sep()
     @contextmanager
     def struct(self, name):
-        self.ensure_sep()
         with self.suite("struct %s:" % (name,)): yield
-        self.ensure_sep()
+        self.sep()
     @contextmanager
     def union(self, name):
-        self.ensure_sep()
         with self.suite("union %s:" % (name,)): yield
-        self.ensure_sep()
+        self.sep()
     @contextmanager
     def enum(self, name):
-        self.ensure_sep()
         with self.suite("enum %s:" % (name,)): yield
-        self.ensure_sep()
+        self.sep()
 
     @contextmanager
     def property(self, name):
-        self.ensure_sep()
         with self.suite("property %s:" % (name,)): yield
-        self.ensure_sep()
+        self.sep()
     @contextmanager
     def get(self):
         with self.suite("def __get__(self):"): yield
-        self.ensure_sep()
+        self.sep()
     @contextmanager
     def set(self):
         with self.suite("def __set__(self, value):"): yield
-        self.ensure_sep()
+        self.sep()
     @contextmanager
     def get_property(self, name):
         with self.property(name):

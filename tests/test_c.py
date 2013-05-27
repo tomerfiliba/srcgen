@@ -50,7 +50,7 @@ typedef union _foo {
         uint64_t c;
         uint64_t d;
     } raw;
-    
+
 } foo;
 
 /*
