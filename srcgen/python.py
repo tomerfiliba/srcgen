@@ -60,33 +60,25 @@ class PythonModule(BaseModule):
         prev.append(self._curr)
         yield
         self._curr = prev
-    @contextmanager
     def if_(self, cond, *args):
-        with self.suite("if %s:" % (cond,), *args): yield
-    @contextmanager
+        return self.suite("if %s:" % (cond,), *args)
     def elif_(self, cond, *args):
-        with self.suite("elif %s:" % (cond,), *args): yield
-    @contextmanager
+        return self.suite("elif %s:" % (cond,), *args)
     def else_(self):
-        with self.suite("else:"): yield
-    @contextmanager
+        return self.suite("else:")
     def for_(self, var, expr):
-        with self.suite("for %s in %s:" % (var, expr)): yield
-    @contextmanager
+        return self.suite("for %s in %s:" % (var, expr))
     def while_(self, cond, *args):
-        with self.suite("while %s:" % (cond,), *args): yield
-    @contextmanager
+        return self.suite("while %s:" % (cond,), *args)
     def try_(self):
-        with self.suite("try:"): yield
-    @contextmanager
+        return self.suite("try:")
     def except_(self, exceptions, var = None):
         if var:
-            with self.suite("except (%s) as %s:" % (", ".join(exceptions), var)): yield
+            return self.suite("except (%s) as %s:" % (", ".join(exceptions), var))
         else:
-            with self.suite("except (%s):" % (", ".join(exceptions),)): yield
-    @contextmanager
+            return self.suite("except (%s):" % (", ".join(exceptions),))
     def finally_(self):
-        with self.suite("finally:"): yield
+        return self.suite("finally:")
     @contextmanager
     def def_(self, name, *args):
         with self.suite("def %s(%s):" % (name, ", ".join(str(a) for a in args))): yield
