@@ -120,15 +120,15 @@ class JExpr(object):
 #        return JExp("%s(function(%s) {\n%s\n})" % (", ".join(json.dumps(a) for a in args), body))
 
 
-if __name__ == "__main__":
-    m = JS()
-    with m.func("foo", "a", "b"):
-        with m.if_("a > b"):
-            m.return_(17)
-        with m.else_():
-            m.return_(18)
-    
-    print m
+#if __name__ == "__main__":
+#    m = JS()
+#    with m.func("foo", "a", "b"):
+#        with m.if_("a > b"):
+#            m.return_(17)
+#        with m.else_():
+#            m.return_(18)
+#    
+#    print m
     
 
 
