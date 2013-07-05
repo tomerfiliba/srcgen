@@ -45,7 +45,7 @@ class JS(BaseModule, Htmlable):
     def return_(self, expr, *args):
         self.stmt("return %s" % (expr,), *args)
     def var(self, name, init = None):
-        self.stmt("var {0} = {1}", name, (init if isinstance(init, str) else json.dumps(init)))
+        self.stmt("var {0} = {1}", name, init if isinstance(init, str) else json.dumps(init))
     
     @contextmanager
     def suite(self, headline, *args, **kwargs):

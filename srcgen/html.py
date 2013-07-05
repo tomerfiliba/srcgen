@@ -343,35 +343,6 @@ class HtmlDocument(object):
 
 
 
-#if __name__ == "__main__":
-#    doc = HtmlDocument()
-#    
-#    with doc.head():
-#        with doc.title():
-#            doc.text("moshe")
-#        css = doc.head_css()
-#        with css("div"):
-#            css["display"] = "block"
-#            with css(".foobar", ".spam"):
-#                with css(".bacon"):
-#                    css["color"] = "white"
-#                css["background_color"] = "black"
-#
-#    with doc.body():
-#        with doc.p():
-#            doc.text("hello")
-#            doc.b("world")
-#            doc.text("zorld")
-#            doc.text("forld")
-#        with doc.p():
-#            with doc.pre():
-#                doc.text("""def foo(x, y):
-#  return x&y""")
-#        with doc.div(class_ = "foobar"):
-#            doc.text(copy, "2013")
-#        doc.script_src("http://foo/bar.js")
-#    print doc.render_html(tabulator = "  ")
-
 
 
 
