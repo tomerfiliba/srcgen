@@ -45,7 +45,7 @@ class JS(BaseModule, Htmlable):
     def return_(self, expr, *args):
         self.stmt("return %s" % (expr,), *args)
     def var(self, name, init = None):
-        self.stmt("var {0} = {1}", name, json.dumps(init))
+        self.stmt("var {0} = {1}", name, (init if isinstance(init, str) else json.dumps(init)))
     
     @contextmanager
     def suite(self, headline, *args, **kwargs):
@@ -95,11 +95,11 @@ class JExpr(object):
     def __getattr__(self, name):
         return JExpr("%s.%s" % (self, name))
     def __setattr__(self, name, value):
-        return JExpr("%s.%s = %s" % (self, name, json.dumps(value)))
+        return JExpr("%s.%s = %s" % (self, name, value if isinstance(value, str) else json.dumps(value)))
     def __getitem__(self, index):
         return JExpr("%s[%s]" % (self, json.dumps(index)))
     def __setitem__(self, index, val):
-        return JExpr("%s[%s] = %s" % (self, json.dumps(index), json.dumps(val)))
+        return JExpr("%s[%s] = %s" % (self, json.dumps(index), val if isinstance(val, str) else json.dumps(val)))
     def __call__(self, *args):
         return JExpr("%s(%s)" % (self, ", ".join(json.dumps(a) for a in args)))
     def __add__(self, other):
