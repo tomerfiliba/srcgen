@@ -1,3 +1,3 @@
 version = (1, 1, 0)
 version_string = "1.1.0"
-release_date = "2013.07.31"
+release_date = "2013.07.17"
