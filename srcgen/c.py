@@ -176,10 +176,18 @@ class HModule(CModule):
         text += "\n#endif /* %s */\n" % (self._guard_name,)
         return text
 
+def render_literal(obj):
+    """
+    Render obj as a literal expression in C.
+    """
+    if isinstance(obj, str):
+        return '"%s"' % obj
+    else:
+        return repr(obj)
 
 class E(BaseE):
     def __call__(self, *args):
-        return E("%r(%s)" % (self, ", ".join(repr(a) for a in args)))
+        return E("%r(%s)" % (self, ", ".join(render_literal(a) for a in args)))
 
 
 

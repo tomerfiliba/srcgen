@@ -58,7 +58,7 @@ typedef union _foo {
 */
 int main(int argv, const char ** argc) {
     if ((x > 5)) {
-        printf('hi');
+        printf("hi");
     }
 }
 """
